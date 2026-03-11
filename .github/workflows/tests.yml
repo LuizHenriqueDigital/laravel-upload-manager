@@ -1,0 +1,31 @@
+name: Tests V2 (Modern)
+
+on:
+  push:
+    branches: [ "v2" ]
+  pull_request:
+    branches: [ "v2" ]
+
+jobs:
+  test-legacy:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: [8.2]
+        laravel: [11.*]
+        dependency-version: [prefer-stable]
+
+    name: P${{ matrix:php }} - L${{ matrix:laravel }} - ${{ matrix:dependency-version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker Containers
+        run: docker-compose build
+
+      - name: Run Tests (PHP 8.2)
+        run: |
+          docker-compose run --rm test-modern composer update --no-interaction --prefer-dist
+          docker-compose run --rm test-modern vendor/bin/pest
