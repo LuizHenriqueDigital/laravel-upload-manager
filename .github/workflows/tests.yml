@@ -15,14 +15,15 @@ jobs:
         php: [8.2]
         laravel: [11.*]
         dependency-version: [prefer-stable]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Build Docker Containers
-        run: docker-compose build
+        run: docker compose build
 
       - name: Run Tests (PHP 8.2)
         run: |
-          docker-compose run --rm test-modern composer update --no-interaction --prefer-dist
-          docker-compose run --rm test-modern vendor/bin/pest
+          docker compose run --rm test-modern composer update --no-interaction --prefer-dist
+          docker compose run --rm test-modern vendor/bin/pest
