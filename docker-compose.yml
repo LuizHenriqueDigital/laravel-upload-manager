@@ -1,0 +1,20 @@
+services:
+  # Ambiente para testar a Versão 1.0 (Legado)
+  test-legacy:
+    build:
+      context: .
+      dockerfile: .docker/php73.dockerfile
+    volumes:
+      - .:/var/www
+    container_name: upload-manager-php73
+    command: php -v
+
+  # Ambiente para testar a Versão 2.0 (Moderno)
+  test-modern:
+    build:
+      context: .
+      dockerfile: .docker/php82.dockerfile
+    volumes:
+      - .:/var/www
+    container_name: upload-manager-php82
+    command: php -v
