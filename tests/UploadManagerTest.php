@@ -90,3 +90,42 @@ test('identifica o usuário logado no pattern', function () {
 
     expect($results->first()->name)->toBe('owner-99.txt');
 });
+
+test('performa bem ao gerenciar 100 arquivos duplicados', function () {
+    $filename = 'performance-test.txt';
+    $path = 'uploads';
+    $disk = 'public';
+
+    // Cria 100 arquivos com o mesmo nome para forçar o loop de resolução
+    for ($i = 0; $i < 100; $i++) {
+        $file = UploadedFile::fake()->create($filename, 100);
+        UploadManager::make($file)
+            ->disk($disk)
+            ->path($path)
+            ->overwrite(false)
+            ->store();
+    }
+
+    $lastFile = UploadedFile::fake()->create($filename, 100);
+    $results = UploadManager::make($lastFile)
+        ->disk($disk)
+        ->path($path)
+        ->overwrite(false)
+        ->store();
+
+    expect($results->first()->name)->toBe('performance-test-100.txt');
+    Storage::disk($disk)->assertExists("{$path}/performance-test-100.txt");
+});
+
+test('pode usar o manager através da facade Upload', function () {
+    $file = UploadedFile::fake()->image('facade-avatar.jpg');
+
+    $results = \LuizHenriqueDigital\UploadManager\Facades\Upload::make($file)
+        ->disk('public')
+        ->asPublic()
+        ->store();
+
+    expect($results->first()->name)->toBe('facade-avatar.jpg');
+    expect($results->first()->visibility)->toBe('public');
+    Storage::disk('public')->assertExists("uploads/facade-avatar.jpg");
+});
