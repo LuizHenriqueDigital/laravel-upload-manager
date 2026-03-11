@@ -15,9 +15,6 @@ jobs:
         php: [8.2]
         laravel: [11.*]
         dependency-version: [prefer-stable]
-
-    name: P${{ matrix:php }} - L${{ matrix:laravel }} - ${{ matrix:dependency-version }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
