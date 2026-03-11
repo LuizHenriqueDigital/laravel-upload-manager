@@ -1,0 +1,31 @@
+name: Tests V1 (Legacy)
+
+on:
+  push:
+    branches: [ "v1" ]
+  pull_request:
+    branches: [ "v1" ]
+
+jobs:
+  test-legacy:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: [7.3]
+        laravel: [7.*, 8.*]
+        dependency-version: [prefer-stable]
+
+    name: P${{ matrix:php }} - L${{ matrix:laravel }} - ${{ matrix:dependency-version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker Containers
+        run: docker-compose build
+
+      - name: Run Legacy Tests (PHP 7.3)
+        run: |
+          docker-compose run --rm test-legacy composer update --no-interaction --prefer-dist
+          docker-compose run --rm test-legacy vendor/bin/pest
