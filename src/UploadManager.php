@@ -21,75 +21,90 @@ class UploadManager
     {
         $instance = new static();
         $instance->files = is_array($files) ? $files : [$files];
+
         return $instance;
     }
 
     public function disk($disk)
     {
         $this->disk = $disk;
+
         return $this;
     }
 
     public function path($path)
     {
         $this->path = trim($path, '/');
+
         return $this;
     }
 
     public function filePattern($pattern)
     {
         $this->pattern = $pattern;
+
         return $this;
     }
 
     public function asPrivate()
     {
         $this->visibility = 'private';
+
         return $this;
     }
 
     public function asPublic()
     {
         $this->visibility = 'public';
+
         return $this;
     }
 
     public function overwrite($overwrite)
     {
         $this->overwrite = $overwrite;
+
         return $this;
     }
 
     public function store()
     {
+        $diskName = $this->disk;
+        $pathPrefix = $this->path;
+        $visibility = $this->visibility;
         $self = $this;
-        return collect($this->files)->map(function ($file) use ($self) {
-            if (!$file instanceof UploadedFile) return null;
 
-            $filename = $self->generateFilename($file);
-            $method = $self->visibility === 'public' ? 'storePubliclyAs' : 'storeAs';
+        return collect($this->files)
+            ->map(function ($file) use ($self, $diskName, $pathPrefix, $visibility) {
+                if (!$file instanceof UploadedFile) {
+                    return null;
+                }
 
-            $path = $file->$method(
-                $self->path,
-                $filename,
-                ['disk' => $self->disk]
-            );
+                $filename = $self->generateFilename($file);
+                $method = $visibility === 'public' ? 'storePubliclyAs' : 'storeAs';
 
-            return (object) [
-                'name'      => $filename,
-                'original'  => $file->getClientOriginalName(),
-                'path'      => $path,
-                'url'       => Storage::disk($self->disk)->url($path),
-                'disk'      => $self->disk,
-                'visibility' => $self->visibility,
-                'extension' => $file->getClientOriginalExtension(),
-                'size'      => $file->getSize(),
-                'mime'      => $file->getMimeType(),
-            ];
-        })->filter();
+                $path = $file->$method(
+                    $pathPrefix,
+                    $filename,
+                    ['disk' => $diskName]
+                );
+
+                return new UploadedFileResult(
+                    $filename,
+                    $file->getClientOriginalName(),
+                    $path,
+                    Storage::disk($diskName)->url($path),
+                    $diskName,
+                    $visibility,
+                    $file->getClientOriginalExtension(),
+                    $file->getSize(),
+                    $file->getMimeType()
+                );
+            })
+            ->filter();
     }
 
-    public static function rollback(Collection $uploadedFiles): void
+    public static function rollback(Collection $uploadedFiles)
     {
         $uploadedFiles->each(function ($file) {
             if (isset($file->path, $file->disk)) {
@@ -102,9 +117,11 @@ class UploadManager
     {
         $extension = $file->getClientOriginalExtension();
         $pattern = str_replace(['.{ext}', '{ext}'], '', $this->pattern);
-        $pattern = str_replace('--', '-', $pattern);
 
-        // Substituindo Arrow Functions por Closures tradicionais para PHP 7.3
+        if (strpos($pattern, '{') === false) {
+            return Str::finish(str_replace('--', '-', $pattern), '.' . $extension);
+        }
+
         $replacements = [
             'filename'  => function () use ($file) {
                 return Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
@@ -146,6 +163,7 @@ class UploadManager
             return isset($replacements[$key]) ? $replacements[$key]() : $matches[0];
         }, $pattern);
 
+        $name = str_replace('--', '-', $name);
         $finalName = Str::finish($name, '.' . $extension);
 
         if (!$this->overwrite) {
@@ -157,11 +175,14 @@ class UploadManager
 
     protected function resolveDuplicateName($currentName, $baseName, $ext)
     {
+        $disk = Storage::disk($this->disk);
         $counter = 1;
-        while (Storage::disk($this->disk)->exists($this->path . '/' . $currentName)) {
+
+        while ($disk->exists($this->path . '/' . $currentName)) {
             $currentName = $baseName . '-' . $counter . '.' . $ext;
             $counter++;
         }
+
         return $currentName;
     }
 }
